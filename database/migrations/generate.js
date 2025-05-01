@@ -1,5 +1,5 @@
 /**
- * Migration Generator for PCS Draw
+ * Migration Generator for AstroWhiteboard
  * 
  * This script generates a new migration file with the current timestamp.
  * 

@@ -1,7 +1,7 @@
 /**
- * Migration Runner for PCS Draw
+ * Migration Runner for AstroWhiteboard
  * 
- * This script runs database migrations for the PCS Draw application.
+ * This script runs database migrations for the AstroWhiteboard application.
  * It supports applying and reverting migrations.
  * 
  * Usage:
@@ -15,12 +15,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const mongoose = require('mongoose');
-const { MongoClient } = require('mongodb');
+const { Pool } = require('pg');
+const pgUtils = require('../pg-utils');
+const pgConfig = require('../../config/postgresql-config');
 
 // Configuration
 const config = {
-  mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/pcsdraw',
   migrationsDir: path.join(__dirname, 'scripts'),
   testMode: process.argv.includes('--test')
 };
@@ -30,22 +30,21 @@ const command = process.argv[2] || 'status';
 const targetVersion = process.argv[3] || null;
 
 /**
- * Connect to MongoDB
- * @returns {Promise<Object>} MongoDB client and database
+ * Connect to PostgreSQL
+ * @returns {Promise<Object>} PostgreSQL client
  */
-async function connectToMongoDB() {
+async function connectToPostgreSQL() {
   try {
-    const client = await MongoClient.connect(config.mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
+    const pool = new Pool(pgConfig);
+    const client = await pool.connect();
     
-    const dbName = config.mongoUri.split('/').pop().split('?')[0];
-    const db = client.db(dbName);
+    // Test connection
+    await client.query('SELECT NOW()');
+    console.log('PostgreSQL connected successfully');
     
-    return { client, db };
+    return { pool, client };
   } catch (error) {
-    console.error('Failed to connect to MongoDB:', error);
+    console.error('Failed to connect to PostgreSQL:', error);
     process.exit(1);
   }
 }
@@ -67,84 +66,70 @@ function getMigrationFiles() {
 
 /**
  * Get applied migrations from database
- * @param {Object} db - MongoDB database
+ * @param {Object} client - PostgreSQL client
  * @returns {Promise<Array<string>>} Array of applied migration names
  */
-async function getAppliedMigrations(db) {
-  // Check if system collection exists
-  const collections = await db.listCollections({ name: 'system' }).toArray();
-  if (collections.length === 0) {
+async function getAppliedMigrations(client) {
+  try {
+    // Check if migrations table exists
+    const tableExists = await pgUtils.tableExists('migrations');
+    if (!tableExists) {
+      // Create migrations table
+      await client.query(`
+        CREATE TABLE migrations (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL UNIQUE,
+          applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+      `);
+      return [];
+    }
+    
+    // Get applied migrations
+    const result = await client.query('SELECT name FROM migrations ORDER BY applied_at');
+    return result.rows.map(row => row.name);
+  } catch (error) {
+    console.error('Error getting applied migrations:', error);
     return [];
   }
-  
-  // Get schema version document
-  const schemaVersion = await db.collection('system').findOne({ _id: 'schemaVersion' });
-  if (!schemaVersion || !schemaVersion.migrations) {
-    return [];
-  }
-  
-  return schemaVersion.migrations.map(m => m.name);
 }
 
 /**
  * Update applied migrations in database
- * @param {Object} db - MongoDB database
+ * @param {Object} client - PostgreSQL client
  * @param {string} migrationName - Migration name
  * @param {boolean} applied - Whether migration was applied or reverted
  * @returns {Promise<void>}
  */
-async function updateAppliedMigrations(db, migrationName, applied) {
-  // Check if system collection exists
-  const collections = await db.listCollections({ name: 'system' }).toArray();
-  if (collections.length === 0) {
-    await db.createCollection('system');
-  }
-  
-  if (applied) {
-    // Add migration to applied list
-    await db.collection('system').updateOne(
-      { _id: 'schemaVersion' },
-      {
-        $push: {
-          migrations: {
-            name: migrationName,
-            appliedAt: new Date()
-          }
-        },
-        $set: {
-          lastUpdated: new Date()
-        },
-        $setOnInsert: {
-          version: '1.0.0'
-        }
-      },
-      { upsert: true }
-    );
-  } else {
-    // Remove migration from applied list
-    await db.collection('system').updateOne(
-      { _id: 'schemaVersion' },
-      {
-        $pull: {
-          migrations: { name: migrationName }
-        },
-        $set: {
-          lastUpdated: new Date()
-        }
-      }
-    );
+async function updateAppliedMigrations(client, migrationName, applied) {
+  try {
+    if (applied) {
+      // Add migration to applied list
+      await client.query(
+        'INSERT INTO migrations (name) VALUES ($1)',
+        [migrationName]
+      );
+    } else {
+      // Remove migration from applied list
+      await client.query(
+        'DELETE FROM migrations WHERE name = $1',
+        [migrationName]
+      );
+    }
+  } catch (error) {
+    console.error('Error updating applied migrations:', error);
+    throw error;
   }
 }
 
 /**
  * Run a migration
- * @param {Object} db - MongoDB database
- * @param {Object} client - MongoDB client
+ * @param {Object} client - PostgreSQL client
  * @param {Object} migration - Migration object
  * @param {string} direction - 'up' or 'down'
  * @returns {Promise<boolean>} Success status
  */
-async function runMigration(db, client, migration, direction) {
+async function runMigration(client, migration, direction) {
   console.log(`${direction === 'up' ? 'Applying' : 'Reverting'} migration: ${migration.name}`);
   
   if (config.testMode) {
@@ -155,17 +140,27 @@ async function runMigration(db, client, migration, direction) {
   const startTime = Date.now();
   
   try {
+    // Begin transaction
+    await client.query('BEGIN');
+    
+    // Run migration
     const migrationModule = require(migration.path);
-    await migrationModule[direction](db, client);
+    await migrationModule[direction](client);
+    
+    // Update applied migrations
+    await updateAppliedMigrations(client, migration.name, direction === 'up');
+    
+    // Commit transaction
+    await client.query('COMMIT');
     
     const duration = Date.now() - startTime;
     console.log(`Migration ${direction === 'up' ? 'applied' : 'reverted'} successfully in ${duration}ms`);
     
-    // Update applied migrations
-    await updateAppliedMigrations(db, migration.name, direction === 'up');
-    
     return true;
   } catch (error) {
+    // Rollback transaction
+    await client.query('ROLLBACK');
+    
     const duration = Date.now() - startTime;
     console.error(`Migration failed after ${duration}ms:`, error);
     return false;
@@ -174,14 +169,13 @@ async function runMigration(db, client, migration, direction) {
 
 /**
  * Apply pending migrations
- * @param {Object} db - MongoDB database
- * @param {Object} client - MongoDB client
+ * @param {Object} client - PostgreSQL client
  * @param {string} targetVersion - Target version to migrate to (optional)
  * @returns {Promise<void>}
  */
-async function applyMigrations(db, client, targetVersion = null) {
+async function applyMigrations(client, targetVersion = null) {
   const migrationFiles = getMigrationFiles();
-  const appliedMigrations = await getAppliedMigrations(db);
+  const appliedMigrations = await getAppliedMigrations(client);
   
   // Filter out already applied migrations
   const pendingMigrations = migrationFiles.filter(
@@ -209,7 +203,7 @@ async function applyMigrations(db, client, targetVersion = null) {
   
   // Apply migrations in sequence
   for (const migration of migrationsToApply) {
-    const success = await runMigration(db, client, migration, 'up');
+    const success = await runMigration(client, migration, 'up');
     
     if (!success) {
       console.error(`Migration ${migration.name} failed, stopping`);
@@ -220,14 +214,13 @@ async function applyMigrations(db, client, targetVersion = null) {
 
 /**
  * Revert applied migrations
- * @param {Object} db - MongoDB database
- * @param {Object} client - MongoDB client
+ * @param {Object} client - PostgreSQL client
  * @param {string} targetVersion - Target version to revert to (optional)
  * @returns {Promise<void>}
  */
-async function revertMigrations(db, client, targetVersion = null) {
+async function revertMigrations(client, targetVersion = null) {
   const migrationFiles = getMigrationFiles();
-  const appliedMigrations = await getAppliedMigrations(db);
+  const appliedMigrations = await getAppliedMigrations(client);
   
   if (appliedMigrations.length === 0) {
     console.log('No applied migrations to revert');
@@ -261,7 +254,7 @@ async function revertMigrations(db, client, targetVersion = null) {
   
   // Revert migrations in reverse order
   for (const migration of migrationsToRevert) {
-    const success = await runMigration(db, client, migration, 'down');
+    const success = await runMigration(client, migration, 'down');
     
     if (!success) {
       console.error(`Reverting migration ${migration.name} failed, stopping`);
@@ -272,12 +265,12 @@ async function revertMigrations(db, client, targetVersion = null) {
 
 /**
  * Show migration status
- * @param {Object} db - MongoDB database
+ * @param {Object} client - PostgreSQL client
  * @returns {Promise<void>}
  */
-async function showMigrationStatus(db) {
+async function showMigrationStatus(client) {
   const migrationFiles = getMigrationFiles();
-  const appliedMigrations = await getAppliedMigrations(db);
+  const appliedMigrations = await getAppliedMigrations(client);
   
   console.log('Migration Status:');
   console.log('=================');
@@ -295,7 +288,7 @@ async function showMigrationStatus(db) {
  * Main function
  */
 async function main() {
-  const { client, db } = await connectToMongoDB();
+  const { pool, client } = await connectToPostgreSQL();
   
   try {
     if (config.testMode) {
@@ -304,13 +297,13 @@ async function main() {
     
     switch (command) {
       case 'up':
-        await applyMigrations(db, client, targetVersion);
+        await applyMigrations(client, targetVersion);
         break;
       case 'down':
-        await revertMigrations(db, client, targetVersion);
+        await revertMigrations(client, targetVersion);
         break;
       case 'status':
-        await showMigrationStatus(db);
+        await showMigrationStatus(client);
         break;
       default:
         console.error(`Unknown command: ${command}`);
@@ -321,7 +314,8 @@ async function main() {
     console.error('Migration error:', error);
     process.exit(1);
   } finally {
-    await client.close();
+    client.release();
+    await pool.end();
   }
 }
 

@@ -1,64 +1,47 @@
 /**
  * Database Connection Utility for PCS Draw
  * 
- * This file provides utilities for connecting to MongoDB and Redis.
+ * This file provides utilities for connecting to PostgreSQL and Redis.
  * It handles connection setup, error handling, and graceful shutdown.
  */
 
-const mongoose = require('mongoose');
+const { Pool } = require('pg');
 const redis = require('redis');
 const { promisify } = require('util');
-const mongoConfig = require('../config/mongodb-config');
+const pgConfig = require('../config/postgresql-config');
 const redisConfig = require('../config/redis-config');
 
-// Track connection status
-let isConnected = false;
+// Database connection pools
+let pgPool = null;
 let redisClient = null;
 let redisPubSub = null;
 
 /**
- * Connect to MongoDB
- * @returns {Promise<mongoose.Connection>} Mongoose connection
+ * Connect to PostgreSQL
+ * @returns {Pool} PostgreSQL connection pool
  */
-async function connectToMongoDB() {
-  if (isConnected) {
-    console.log('Using existing MongoDB connection');
-    return mongoose.connection;
+function connectToPostgreSQL() {
+  if (pgPool) {
+    console.log('Using existing PostgreSQL connection pool');
+    return pgPool;
   }
   
-  console.log('Creating new MongoDB connection...');
+  console.log('Creating new PostgreSQL connection pool...');
   
-  try {
-    // Configure mongoose
-    mongoose.set('debug', process.env.NODE_ENV === 'development');
-    
-    // Connect to MongoDB
-    await mongoose.connect(mongoConfig.uri, mongoConfig.options);
-    
-    isConnected = true;
-    console.log('MongoDB connected successfully');
-    
-    // Handle connection events
-    mongoose.connection.on('error', (err) => {
-      console.error('MongoDB connection error:', err);
-      isConnected = false;
-    });
-    
-    mongoose.connection.on('disconnected', () => {
-      console.log('MongoDB disconnected');
-      isConnected = false;
-    });
-    
-    mongoose.connection.on('reconnected', () => {
-      console.log('MongoDB reconnected');
-      isConnected = true;
-    });
-    
-    return mongoose.connection;
-  } catch (error) {
-    console.error('MongoDB connection failed:', error);
-    throw error;
-  }
+  // Create connection pool
+  pgPool = new Pool(pgConfig);
+  
+  // Handle pool errors
+  pgPool.on('error', (err, client) => {
+    console.error('Unexpected error on idle PostgreSQL client', err);
+  });
+  
+  // Test connection
+  pgPool.query('SELECT NOW()')
+    .then(() => console.log('PostgreSQL connected successfully'))
+    .catch(err => console.error('PostgreSQL connection error:', err));
+  
+  return pgPool;
 }
 
 /**
@@ -146,21 +129,24 @@ function connectToRedis() {
 async function closeConnections() {
   console.log('Closing database connections...');
   
-  // Close MongoDB connection
-  if (mongoose.connection.readyState !== 0) {
-    await mongoose.connection.close();
-    console.log('MongoDB connection closed');
+  // Close PostgreSQL connection pool
+  if (pgPool) {
+    await pgPool.end();
+    console.log('PostgreSQL connection pool closed');
+    pgPool = null;
   }
   
   // Close Redis connections
   if (redisClient && redisClient.connected) {
     redisClient.quit();
     console.log('Redis connection closed');
+    redisClient = null;
   }
   
   if (redisPubSub && redisPubSub.connected) {
     redisPubSub.quit();
     console.log('Redis PubSub connection closed');
+    redisPubSub = null;
   }
 }
 
@@ -198,11 +184,11 @@ function setupGracefulShutdown() {
 
 // Export database connection utilities
 module.exports = {
-  connectToMongoDB,
+  connectToPostgreSQL,
   connectToRedis,
   closeConnections,
   setupGracefulShutdown,
-  getMongooseConnection: () => mongoose.connection,
+  getPostgreSQLPool: () => pgPool,
   getRedisClient: () => redisClient,
   getRedisPubSub: () => redisPubSub
 };

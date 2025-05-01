@@ -1,0 +1,15 @@
+# Node modules
+node_modules/
+
+# Build outputs
+dist/
+out/
+.next/
+build/
+
+# Environment variables
+.env
+
+
+
+
