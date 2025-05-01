@@ -11,10 +11,32 @@ const logger = require('../utils/logger');
 // Redis clients
 let redisClient = null;
 let redisPubSub = null;
+let redisEnabled = true;
+
+// Mock Redis client for development without Redis
+const mockRedisClient = {
+  get: async () => null,
+  set: async () => 'OK',
+  del: async () => 1,
+  exists: async () => 0,
+  expire: async () => 1,
+  publish: async () => 0,
+  subscribe: async () => {},
+  isOpen: true
+};
 
 // Connect to Redis
 async function connectToRedis() {
   try {
+    // Check if Redis is disabled
+    if (process.env.REDIS_ENABLED === 'false') {
+      redisEnabled = false;
+      logger.warn('Redis is disabled. Using mock Redis client.');
+      redisClient = mockRedisClient;
+      redisPubSub = mockRedisClient;
+      return { redisClient, redisPubSub };
+    }
+    
     if (redisClient && redisClient.isOpen) {
       logger.info('Using existing Redis connection');
       return { redisClient, redisPubSub };
@@ -63,21 +85,37 @@ async function connectToRedis() {
       logger.error(`Redis PubSub error: ${err.message}`);
     });
 
-    // Connect to Redis
-    await redisClient.connect();
-    await redisPubSub.connect();
-    
-    logger.info('Connected to Redis successfully');
+    try {
+      // Connect to Redis
+      await redisClient.connect();
+      await redisPubSub.connect();
+      
+      logger.info('Connected to Redis successfully');
+    } catch (error) {
+      logger.error(`Failed to connect to Redis: ${error.message}`);
+      logger.warn('Falling back to mock Redis client');
+      redisEnabled = false;
+      redisClient = mockRedisClient;
+      redisPubSub = mockRedisClient;
+    }
     
     return { redisClient, redisPubSub };
   } catch (error) {
     logger.error(`Redis connection error: ${error.message}`);
-    throw error;
+    logger.warn('Falling back to mock Redis client');
+    redisEnabled = false;
+    redisClient = mockRedisClient;
+    redisPubSub = mockRedisClient;
+    return { redisClient, redisPubSub };
   }
 }
 
 // Close Redis connection
 async function closeConnection() {
+  if (!redisEnabled) {
+    return Promise.resolve();
+  }
+  
   let promises = [];
   
   if (redisClient && redisClient.isOpen) {
@@ -99,17 +137,29 @@ async function closeConnection() {
 
 // Get Redis client
 function getClient() {
-  if (!redisClient || !redisClient.isOpen) {
-    throw new Error('Redis client not connected');
+  if (!redisEnabled) {
+    return mockRedisClient;
   }
+  
+  if (!redisClient || !redisClient.isOpen) {
+    logger.warn('Redis client not connected, using mock client');
+    return mockRedisClient;
+  }
+  
   return redisClient;
 }
 
 // Get Redis PubSub client
 function getPubSubClient() {
-  if (!redisPubSub || !redisPubSub.isOpen) {
-    throw new Error('Redis PubSub client not connected');
+  if (!redisEnabled) {
+    return mockRedisClient;
   }
+  
+  if (!redisPubSub || !redisPubSub.isOpen) {
+    logger.warn('Redis PubSub client not connected, using mock client');
+    return mockRedisClient;
+  }
+  
   return redisPubSub;
 }
 

@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Primary Colors */
+    --color-primary: #3B82F6;
+    --color-primary-dark: #1E40AF;
+    --color-accent: #F59E0B;
+
+    /* Neutral Colors */
+    --color-text: #1F2937;
+    --color-text-secondary: #6B7280;
+    --color-border: #E5E7EB;
+    --color-background: #F9FAFB;
+    --color-white: #FFFFFF;
+
+    /* Status Colors */
+    --color-success: #10B981;
+    --color-error: #EF4444;
+    --color-info: #3B82F6;
+
+    /* Opacity Variants */
+    --color-primary-10: rgba(59, 130, 246, 0.1);
+    --color-primary-25: rgba(59, 130, 246, 0.25);
+    --color-success-10: rgba(16, 185, 129, 0.1);
+    --color-error-10: rgba(239, 68, 68, 0.1);
+    --color-info-10: rgba(59, 130, 246, 0.1);
+
+    /* Font Family */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+
+    /* Font Sizes */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+    --text-4xl: 2.25rem;
+
+    /* Font Weights */
+    --font-light: 300;
+    --font-regular: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+
+    /* Line Heights */
+    --leading-none: 1;
+    --leading-tight: 1.25;
+    --leading-snug: 1.375;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.625;
+    --leading-loose: 2;
+
+    /* Spacing */
+    --space-2xs: 0.25rem;
+    --space-xs: 0.5rem;
+    --space-sm: 0.75rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+    --space-3xl: 4rem;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+    /* Border Radius */
+    --radius-none: 0;
+    --radius-sm: 0.125rem;
+    --radius: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
+    --radius-full: 9999px;
+
+    /* Z-Index Scale */
+    --z-0: 0;
+    --z-10: 10;
+    --z-20: 20;
+    --z-30: 30;
+    --z-40: 40;
+    --z-50: 50;
+    --z-auto: auto;
+
+    /* Transitions */
+    --transition-fast: 150ms;
+    --transition-normal: 250ms;
+    --transition-slow: 350ms;
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  }
+
+  body {
+    font-family: var(--font-family);
+    color: var(--color-text);
+    background-color: var(--color-background);
+    line-height: var(--leading-normal);
+  }
+
+  @media (max-width: 639px) {
+    :root {
+      --text-base: 0.9375rem;
+      --text-lg: 1.0625rem;
+      --text-xl: 1.125rem;
+      --text-2xl: 1.25rem;
+      --text-3xl: 1.5rem;
+      --text-4xl: 1.875rem;
+    }
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center font-semibold px-4 py-2 rounded-md transition-all duration-fast;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white shadow-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-25 disabled:bg-text-secondary disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-text border border-border shadow-sm hover:bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-25 disabled:text-text-secondary disabled:cursor-not-allowed;
+  }
+
+  .btn-icon {
+    @apply inline-flex items-center justify-center w-10 h-10 rounded-md bg-transparent text-text hover:bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-25;
+  }
+
+  .toolbar-btn {
+    @apply inline-flex items-center justify-center w-10 h-10 rounded-md bg-white text-text border border-border hover:bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-25 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:border-primary;
+  }
+
+  .input-group {
+    @apply flex flex-col mb-4;
+  }
+
+  .input-label {
+    @apply text-sm font-medium text-text mb-1;
+  }
+
+  .input {
+    @apply h-10 px-3 bg-white border border-border rounded-md text-base text-text transition-all duration-fast focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-25 placeholder:text-text-secondary;
+  }
+
+  .input-error {
+    @apply border-error focus:ring-2 focus:ring-error focus:ring-opacity-10;
+  }
+
+  .error-message {
+    @apply text-sm text-error mt-1;
+  }
+
+  .card {
+    @apply bg-white border border-border rounded-lg shadow-md overflow-hidden;
+  }
+
+  .card-header {
+    @apply p-4 border-b border-border;
+  }
+
+  .card-title {
+    @apply text-xl font-semibold text-text m-0;
+  }
+
+  .card-body {
+    @apply p-4;
+  }
+
+  .card-footer {
+    @apply p-4 border-t border-border bg-background;
+  }
+}
