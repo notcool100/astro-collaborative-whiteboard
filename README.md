@@ -69,6 +69,25 @@ This repository contains the following documentation:
    # Create .env files in both client and server directories
    # See .env.example for required variables
    ```
+4. Run migrations (if using a database)
+   ```bash
+   # If you're using Postgresql as your database:
+   To initialize the database, you can run:'
+   npm run db:init
+   ```
+   To seed the database with sample data:
+
+   npm run db:seed
+
+   ```
+   To seed the database with sample data:
+
+npm run db:seed
+```
+To run migrations:
+
+npm run db:migrate
+
 
 4. Start development servers
    ```
