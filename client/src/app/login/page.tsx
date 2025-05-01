@@ -3,9 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { AxiosError } from 'axios';
 
 export default function Login() {
   const router = useRouter();
+  const { login, isLoading: authLoading } = useAuth();
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -57,19 +61,32 @@ export default function Login() {
     setIsLoading(true);
     
     try {
-      // This would be replaced with an actual API call
-      // const response = await authService.login(formData.email, formData.password);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Redirect to dashboard after successful login
-      router.push('/dashboard');
+      await login(formData.email, formData.password);
+      // The auth context will handle the redirect to dashboard
     } catch (error) {
-      setErrors({
-        form: 'Invalid email or password',
-      });
-    } finally {
+      console.error('Login error:', error);
+      
+      if (error instanceof AxiosError && error.response) {
+        // Handle API error responses
+        if (error.response.status === 401) {
+          setErrors({
+            form: 'Invalid email or password',
+          });
+        } else if (error.response.data?.message) {
+          setErrors({
+            form: error.response.data.message,
+          });
+        } else {
+          setErrors({
+            form: 'An error occurred during login. Please try again.',
+          });
+        }
+      } else {
+        setErrors({
+          form: 'An error occurred during login. Please try again.',
+        });
+      }
+      
       setIsLoading(false);
     }
   };
@@ -153,9 +170,9 @@ export default function Login() {
             <button
               type="submit"
               className="btn btn-primary w-full py-3"
-              disabled={isLoading}
+              disabled={isLoading || authLoading}
             >
-              {isLoading ? (
+              {(isLoading || authLoading) ? (
                 <span className="flex items-center justify-center">
                   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

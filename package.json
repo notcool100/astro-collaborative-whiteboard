@@ -1,11 +1,21 @@
 {
-  "name": "astrowhiteboard",
+  "name": "pcsdraw",
   "version": "1.0.0",
-  "description": "A collaborative whiteboard application",
+  "description": "A real-time collaborative whiteboard web application",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "nodemon index.js",
+    "dev:client": "cd client && npm run dev",
+    "build": "concurrently \"npm run build:server\" \"npm run build:client\"",
+    "build:client": "cd client && npm run build",
+    "build:server": "echo \"No build step for server yet\"",
+    "start:all": "concurrently \"npm run start:server\" \"npm run start:client\"",
+    "start:client": "cd client && npm run start",
+    "start:server": "node index.js",
+    "install:all": "npm install && npm run install:client",
+    "install:client": "cd client && npm install",
     "test": "jest",
     "lint": "eslint .",
     "db:init": "node database/init-db.js",
@@ -42,6 +52,7 @@
     "zod": "^3.21.4"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "eslint": "^8.41.0",
     "jest": "^29.5.0",
     "nodemon": "^2.0.22",

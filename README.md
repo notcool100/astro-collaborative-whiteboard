@@ -1,6 +1,6 @@
 # PCS Draw - Collaborative Whiteboard Web Application
 
-PCS Draw is a real-time collaborative whiteboard web application inspired by Excalidraw Pro. It allows multiple users to draw, design, and collaborate on a shared canvas in real-time.
+PCS Draw is a real-time collaborative whiteboard web application that enables teams to brainstorm, design, and collaborate seamlessly on a shared canvas in real-time.
 
 ## Project Documentation
 
@@ -13,92 +13,89 @@ This repository contains the following documentation:
 
 ## Features
 
-- Interactive whiteboard canvas with drawing tools
-- Real-time collaboration with multiple users
-- Shape drawing (rectangle, circle, arrows)
-- Text and freehand drawing
-- Comprehensive toolbar with selection, drawing, and editing tools
-- User authentication with role-based access
-- Cloud storage for whiteboards
-- Export options (PNG, SVG, JSON)
-- End-to-end encryption
-- Responsive design for all devices
-- Workspace organization
-- Version history
+- **User Authentication**: Secure login, registration, and profile management
+- **Workspace Management**: Create and organize workspaces for different projects or teams
+- **Whiteboard Editor**: Powerful drawing tools including shapes, text, and freehand drawing
+- **Real-time Collaboration**: See changes as they happen with multiple users
+- **Version History**: Track changes and revert to previous versions
+- **Responsive Design**: Works on desktop, tablet, and mobile devices
+- **Sharing Options**: Share whiteboards with specific permissions
+- **Export Options**: Export as PNG, SVG, or JSON
+- **End-to-end Encryption**: Optional encryption for sensitive content
 
 ## Technology Stack
 
-- **Frontend**: Next.js,TypeScript, TailwindCSS
-- **Backend**: Node.js, Express
-- **Real-time Communication**: WebSockets/WebRTC
-- **Database**: To be determined (Firebase or alternative)
-- **Authentication**: JWT-based system
+### Frontend
+- **Next.js 14**: React framework with App Router
+- **TypeScript**: For type safety
+- **TailwindCSS**: For styling
+- **React Query**: For data fetching and caching
+- **Zustand**: For state management
+- **Fabric.js**: For canvas manipulation
+- **Socket.IO Client**: For real-time communication
+
+### Backend
+- **Node.js**: JavaScript runtime
+- **Express**: Web framework
+- **PostgreSQL**: Database for persistent storage
+- **Redis**: For caching and pub/sub
+- **Socket.IO**: For WebSocket communication
+- **JWT**: For authentication
+- **Zod**: For validation
+
+## Project Structure
+
+```
+pcsdraw/
+├── client/             # Frontend application (Next.js)
+├── server/             # Backend API (Express)
+├── design/             # Design assets and documentation
+│   ├── design-system/  # Design system documentation
+│   └── wireframes/     # Wireframe documentation
+├── .env                # Environment variables (create from .env.example)
+└── package.json        # Project scripts
+```
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js 16.x or higher
 - npm or yarn
-- Git
+- PostgreSQL 14.x or higher
+- Redis (optional, can be disabled in development)
 
 ### Installation
 
 1. Clone the repository
-   ```
+   ```bash
    git clone https://github.com/yourusername/pcsdraw.git
    cd pcsdraw
    ```
 
-2. Install dependencies
-   ```
-   # Install root dependencies
-   npm install
+2. Copy `.env.example` to `.env` and update the values
 
-   # Install client dependencies
-   cd client
-   npm install
-
-   # Install server dependencies
-   cd ../server
-   npm install
-   ```
-
-3. Set up environment variables
-   ```
-   # Create .env files in both client and server directories
-   # See .env.example for required variables
-   ```
-4. Run migrations (if using a database)
+3. Install dependencies:
    ```bash
-   # If you're using Postgresql as your database:
-   To initialize the database, you can run:'
+   npm run install:all
+   ```
+
+4. Initialize the database:
+   ```bash
    npm run db:init
+   npm run db:seed  # Optional: Add sample data
    ```
-   To seed the database with sample data:
 
-   npm run db:seed
-
-   ```
-   To seed the database with sample data:
-
-npm run db:seed
-```
-To run migrations:
-
-npm run db:migrate
-
-
-4. Start development servers
-   ```
-   # Start backend server
-   cd server
+5. Start the development servers:
+   ```bash
    npm run dev
-
-   # Start frontend server
-   cd ../client
-   npm start
    ```
+
+### Development
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001
+- API Documentation: http://localhost:3001/api-docs
 
 ## Development Workflow
 
